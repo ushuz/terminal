@@ -922,13 +922,13 @@ try
         if (fAlsoCopyFormatting)
         {
             const auto& fontData = _actualFont;
-            const int iFontHeightPoints = fontData.GetUnscaledSize().height; // this renderer uses points already
+            const auto fontSize = fontData.GetFontSize();
             const auto bgColor = _terminal->GetAttributeColors({}).second;
 
-            auto HTMLToPlaceOnClip = TextBuffer::GenHTML(rows, iFontHeightPoints, fontData.GetFaceName(), bgColor);
+            auto HTMLToPlaceOnClip = TextBuffer::GenHTML(rows, fontSize, fontData.GetFaceName(), bgColor);
             _CopyToSystemClipboard(HTMLToPlaceOnClip, L"HTML Format");
 
-            auto RTFToPlaceOnClip = TextBuffer::GenRTF(rows, iFontHeightPoints, fontData.GetFaceName(), bgColor);
+            auto RTFToPlaceOnClip = TextBuffer::GenRTF(rows, fontSize, fontData.GetFaceName(), bgColor);
             _CopyToSystemClipboard(RTFToPlaceOnClip, L"Rich Text Format");
         }
     }

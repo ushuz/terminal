@@ -59,15 +59,15 @@
     </Type>
 
     <Type Name="til::size">
-        <DisplayString>{{W: {_width,d} x H: {_height,d} -> A: {_width * _height, d}}}</DisplayString>
+        <DisplayString>{{W: {width} x H: {height} -> A: {width * height, d}}}</DisplayString>
     </Type>
 
     <Type Name="til::point">
-        <DisplayString>{{X: {_x,d}, Y: {_y,d}}}</DisplayString>
+        <DisplayString>{{X: {x}, Y: {y}}}</DisplayString>
     </Type>
 
     <Type Name="til::rect">
-        <DisplayString>{{L: {_topLeft._x}, T: {_topLeft._y}, R: {_bottomRight._x} B: {_bottomRight._y}   [W: {_bottomRight._x - _topLeft._x} x H: {_bottomRight._y - _topLeft._y} -> A: {(_bottomRight._x - _topLeft._x) * (_bottomRight._y - _topLeft._y)}]}}</DisplayString>
+        <DisplayString>{{L: {left}, T: {top}, R: {right} B: {bottom}   [W: {right - left} x H: {bottom - top} -> A: {(right - left) * (bottom - top)}]}}</DisplayString>
     </Type>
 
     <Type Name="til::color">
@@ -120,6 +120,14 @@
                 <ValuePointer>_map._Mypair._Myval2</ValuePointer>
             </ArrayItems>
         </Expand>
+    </Type>
+
+    <Type Name="CSSLengthPercentage">
+        <DisplayString Condition="_referenceFrame == 0">[empty]</DisplayString>
+        <DisplayString Condition="_referenceFrame == 1" Optional="true">{_value*72,g}pt / {_value*96,g}px</DisplayString>
+        <DisplayString Condition="_referenceFrame == 2 &amp;&amp; _value &lt;= 1" Optional="true">{_value*100,g}%</DisplayString>
+        <DisplayString Condition="_referenceFrame == 2 &amp;&amp; _value &gt; 1" Optional="true">{_value,g}</DisplayString>
+        <DisplayString Condition="_referenceFrame == 3" Optional="true">{_value,g}ch</DisplayString>
     </Type>
 
     <Type Name="Microsoft::Console::Render::Atlas::Buffer&lt;*&gt;">

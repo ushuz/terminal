@@ -44,7 +44,8 @@ public:
                        const til::size windowSize,
                        const TextAttribute& fill,
                        const TextAttribute& popupFill,
-                       const FontInfo fontInfo);
+                       const FontInfoDesired& fontInfoDesired,
+                       const FontInfo& fontInfo);
     ~ConversionAreaInfo() = default;
     ConversionAreaInfo(const ConversionAreaInfo&) = delete;
     ConversionAreaInfo(ConversionAreaInfo&& other);

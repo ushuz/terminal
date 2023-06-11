@@ -1943,7 +1943,7 @@ std::wstring TextBuffer::GetPlainText(const til::point& start, const til::point&
 // Return Value:
 // - string containing the generated HTML
 std::string TextBuffer::GenHTML(const TextAndColor& rows,
-                                const int fontHeightPoints,
+                                const float fontHeightPoints,
                                 const std::wstring_view fontFaceName,
                                 const COLORREF backgroundColor)
 {
@@ -2133,7 +2133,7 @@ std::string TextBuffer::GenHTML(const TextAndColor& rows,
 // - htmlTitle - value used in title tag of html header. Used to name the application
 // Return Value:
 // - string containing the generated RTF
-std::string TextBuffer::GenRTF(const TextAndColor& rows, const int fontHeightPoints, const std::wstring_view fontFaceName, const COLORREF backgroundColor)
+std::string TextBuffer::GenRTF(const TextAndColor& rows, const float fontHeightPoints, const std::wstring_view fontFaceName, const COLORREF backgroundColor)
 {
     try
     {

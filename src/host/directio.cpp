@@ -1061,10 +1061,10 @@ void EventsToUnicode(_Inout_ std::deque<std::unique_ptr<IInputEvent>>& inEvents,
 
     // Create new screen buffer.
     auto WindowSize = siExisting.GetViewport().Dimensions();
-    const auto& existingFont = siExisting.GetCurrentFont();
     SCREEN_INFORMATION* ScreenInfo = nullptr;
     auto Status = SCREEN_INFORMATION::CreateInstance(WindowSize,
-                                                     existingFont,
+                                                     siExisting.GetDesiredFont(),
+                                                     siExisting.GetCurrentFont(),
                                                      WindowSize,
                                                      siExisting.GetAttributes(),
                                                      siExisting.GetAttributes(),

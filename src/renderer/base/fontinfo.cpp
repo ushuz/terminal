@@ -5,73 +5,19 @@
 
 #include "../inc/FontInfo.hpp"
 
-FontInfo::FontInfo(const std::wstring_view& faceName,
-                   const unsigned char family,
-                   const unsigned int weight,
-                   const til::size coordSize,
-                   const unsigned int codePage,
-                   const bool fSetDefaultRasterFont /* = false */) noexcept :
-    FontInfoBase(faceName, family, weight, fSetDefaultRasterFont, codePage),
-    _coordSize(coordSize),
-    _coordSizeUnscaled(coordSize),
-    _didFallback(false)
+void FontInfo::SetFromEngine(std::wstring faceName, const unsigned char family, const unsigned weight, const unsigned codePage, CellSizeInDIP cellSizeInDIP, float fontSizeInPt, til::size cellSizeInPx)
 {
-    ValidateFont();
-}
+    _faceName = std::move(faceName);
+    _family = family;
+    _weight = weight;
+    _codePage = codePage;
+    _cellSizeInDIP = cellSizeInDIP;
+    _fontSizeInPt = fontSizeInPt;
+    _cellSizeInPx = cellSizeInPx;
 
-bool FontInfo::operator==(const FontInfo& other) noexcept
-{
-    return FontInfoBase::operator==(other) &&
-           _coordSize == other._coordSize &&
-           _coordSizeUnscaled == other._coordSizeUnscaled;
-}
-
-til::size FontInfo::GetUnscaledSize() const noexcept
-{
-    return _coordSizeUnscaled;
-}
-
-til::size FontInfo::GetSize() const noexcept
-{
-    return _coordSize;
-}
-
-void FontInfo::SetFromEngine(const std::wstring_view& faceName,
-                             const unsigned char family,
-                             const unsigned int weight,
-                             const bool fSetDefaultRasterFont,
-                             const til::size coordSize,
-                             const til::size coordSizeUnscaled) noexcept
-{
-    FontInfoBase::SetFromEngine(faceName,
-                                family,
-                                weight,
-                                fSetDefaultRasterFont);
-    _coordSize = coordSize;
-    _coordSizeUnscaled = coordSizeUnscaled;
-    _ValidateCoordSize();
-}
-
-bool FontInfo::GetFallback() const noexcept
-{
-    return _didFallback;
-}
-
-void FontInfo::SetFallback(const bool didFallback) noexcept
-{
-    _didFallback = didFallback;
-}
-
-void FontInfo::ValidateFont() noexcept
-{
-    _ValidateCoordSize();
-}
-
-void FontInfo::_ValidateCoordSize() noexcept
-{
     // a (0,0) font is okay for the default raster font, as we will eventually set the dimensions based on the font GDI
     // passes back to us.
-    if (!IsDefaultRasterFontNoSize())
+    if (!(_weight == 0 && _family == 0 && _faceName.empty()))
     {
         // Initialize X to 1 so we don't divide by 0
         if (_coordSize.width == 0)
@@ -88,4 +34,31 @@ void FontInfo::_ValidateCoordSize() noexcept
             _coordSizeUnscaled = _coordSize;
         }
     }
+}
+
+const CellSizeInDIP& FontInfo::GetUnscaledSize() const noexcept
+{
+    return _cellSizeInDIP;
+}
+
+float FontInfo::GetFontSize() const noexcept
+{
+    return _fontSizeInPt;
+}
+
+const til::size& FontInfo::GetSize() const noexcept
+{
+    return _cellSizeInPx;
+}
+
+bool FontInfo::IsTrueTypeFont() const noexcept
+{
+    return WI_IsFlagSet(_family, TMPF_TRUETYPE);
+}
+
+void FontInfo::FillLegacyNameBuffer(wchar_t (&buffer)[LF_FACESIZE]) const noexcept
+{
+    const auto toCopy = std::min(std::size(buffer) - 1, _faceName.size());
+    const auto last = std::copy_n(_faceName.data(), toCopy, &buffer[0]);
+    *last = L'\0';
 }
