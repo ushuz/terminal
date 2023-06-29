@@ -92,8 +92,7 @@ SOURCES = \
     ..\CommandNumberPopup.cpp \
     ..\CommandListPopup.cpp \
     ..\CopyFromCharPopup.cpp \
-    ..\CopyToCharPopup.cpp \
-    ..\VtApiRoutines.cpp \
+    ..\CopyToCharPopup.cpp
 
 
 # -------------------------------------

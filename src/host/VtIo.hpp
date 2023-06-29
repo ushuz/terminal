@@ -28,6 +28,7 @@ namespace Microsoft::Console::VirtualTerminal
         [[nodiscard]] HRESULT CreateIoHandlers() noexcept;
 
         bool IsUsingVt() const;
+        bool PassthroughMode() const noexcept;
 
         [[nodiscard]] HRESULT StartIfNeeded();
 
@@ -54,6 +55,13 @@ namespace Microsoft::Console::VirtualTerminal
         void CreatePseudoWindow();
         void SetWindowVisibility(bool showOrHide) noexcept;
 
+        using ConcludePassthroughParam = std::pair<const VtIo*, SCREEN_INFORMATION*>;
+        static void ConcludePassthrough(const ConcludePassthroughParam& p) noexcept;
+        using PassthroughModeCleanup = wil::unique_any<ConcludePassthroughParam, decltype(&ConcludePassthrough), &ConcludePassthrough>;
+
+        [[nodiscard]] PassthroughModeCleanup PrepareForPassthrough(SCREEN_INFORMATION& screenInfo) const;
+        void Passthrough(const std::wstring_view& text) const;
+
     private:
         // After CreateIoHandlers is called, these will be invalid.
         wil::unique_hfile _hInput;
@@ -67,6 +75,7 @@ namespace Microsoft::Console::VirtualTerminal
         bool _lookingForCursorPosition;
 
         bool _resizeQuirk{ false };
+        bool _passthroughModeArg{ false };
         bool _passthroughMode{ false };
         bool _closeEventSent{ false };
 

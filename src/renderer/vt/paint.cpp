@@ -107,7 +107,7 @@ using namespace Microsoft::Console::Types;
     }
     else
     {
-        RETURN_IF_FAILED(_Flush());
+        RETURN_IF_FAILED(Flush());
     }
 
     return S_OK;

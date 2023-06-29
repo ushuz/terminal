@@ -46,16 +46,6 @@ XtermEngine::XtermEngine(_In_ wil::unique_hfile hPipe,
     // during the frame.
     _nextCursorIsVisible = false;
 
-    // Do not perform synchronization clearing in passthrough mode.
-    // In passthrough, the terminal leads and we follow what it is
-    // handling from the client application.
-    // (This is in contrast to full PTY mode where WE, the ConPTY, lead and
-    //  it follows our state.)
-    if (_passthrough)
-    {
-        _firstPaint = false;
-    }
-
     if (_firstPaint)
     {
         // MSFT:17815688
@@ -473,6 +463,11 @@ CATCH_RETURN();
 [[nodiscard]] HRESULT XtermEngine::InvalidateScroll(const til::point* const pcoordDelta) noexcept
 try
 {
+    if (!_invalidationEnabled)
+    {
+        return S_OK;
+    }
+
     const auto delta{ *pcoordDelta };
 
     if (delta != til::point{ 0, 0 })
@@ -555,7 +550,7 @@ CATCH_RETURN();
     {
         RETURN_IF_FAILED(_Write("\x1b[2t"));
     }
-    return _Flush();
+    return Flush();
 }
 
 // Method Description:

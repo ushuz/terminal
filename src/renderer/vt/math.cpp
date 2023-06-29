@@ -37,6 +37,20 @@ using namespace Microsoft::Console::Types;
     return S_FALSE;
 }
 
+void VtEngine::DisableInvalidation() noexcept
+{
+    _invalidationEnabled = false;
+}
+
+void VtEngine::EnableInvalidation(til::point cursorPos) noexcept
+{
+    _invalidationEnabled = true;
+    _lastText = cursorPos;
+    _deferredCursorPos = INVALID_COORDS;
+    _wrappedRow = std::nullopt;
+    _delayedEolWrap = false;
+}
+
 // Routine Description:
 // - Performs a "CombineRect" with the "OR" operation.
 // - Basically extends the existing rect outward to also encompass the passed-in region.

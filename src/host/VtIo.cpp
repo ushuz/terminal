@@ -14,8 +14,6 @@
 #include "input.h" // ProcessCtrlEvents
 #include "output.h" // CloseConsoleProcessState
 
-#include "VtApiRoutines.h"
-
 using namespace Microsoft::Console;
 using namespace Microsoft::Console::Render;
 using namespace Microsoft::Console::VirtualTerminal;
@@ -71,7 +69,7 @@ VtIo::VtIo() :
 {
     _lookingForCursorPosition = pArgs->GetInheritCursor();
     _resizeQuirk = pArgs->IsResizeQuirkEnabled();
-    _passthroughMode = pArgs->IsPassthroughMode();
+    _passthroughModeArg = pArgs->IsPassthroughMode();
 
     // If we were already given VT handles, set up the VT IO engine to use those.
     if (pArgs->InConptyMode())
@@ -159,65 +157,21 @@ VtIo::VtIo() :
             switch (_IoMode)
             {
             case VtIoMode::XTERM_256:
-            {
-                auto xterm256Engine = std::make_unique<Xterm256Engine>(std::move(_hOutput),
-                                                                       initialViewport);
-                if constexpr (Feature_VtPassthroughMode::IsEnabled())
-                {
-                    if (_passthroughMode)
-                    {
-                        auto vtapi = new VtApiRoutines();
-                        vtapi->m_pVtEngine = xterm256Engine.get();
-                        vtapi->m_pUsualRoutines = globals.api;
-
-                        xterm256Engine->SetPassthroughMode(true);
-
-                        if (_pVtInputThread)
-                        {
-                            auto pfnSetListenForDSR = std::bind(&VtInputThread::SetLookingForDSR, _pVtInputThread.get(), std::placeholders::_1);
-                            xterm256Engine->SetLookingForDSRCallback(pfnSetListenForDSR);
-                        }
-
-                        globals.api = vtapi;
-                    }
-                }
-
-                _pVtRenderEngine = std::move(xterm256Engine);
+                _pVtRenderEngine = std::make_unique<Xterm256Engine>(std::move(_hOutput), initialViewport);
                 break;
-            }
             case VtIoMode::XTERM:
-            {
-                _pVtRenderEngine = std::make_unique<XtermEngine>(std::move(_hOutput),
-                                                                 initialViewport,
-                                                                 false);
-                if (_passthroughMode)
-                {
-                    return E_NOTIMPL;
-                }
+                _pVtRenderEngine = std::make_unique<XtermEngine>(std::move(_hOutput), initialViewport, false);
                 break;
-            }
             case VtIoMode::XTERM_ASCII:
-            {
-                _pVtRenderEngine = std::make_unique<XtermEngine>(std::move(_hOutput),
-                                                                 initialViewport,
-                                                                 true);
-
-                if (_passthroughMode)
-                {
-                    return E_NOTIMPL;
-                }
+                _pVtRenderEngine = std::make_unique<XtermEngine>(std::move(_hOutput), initialViewport, true);
                 break;
-            }
             default:
-            {
                 return E_FAIL;
             }
-            }
-            if (_pVtRenderEngine)
-            {
-                _pVtRenderEngine->SetTerminalOwner(this);
-                _pVtRenderEngine->SetResizeQuirk(_resizeQuirk);
-            }
+
+            _pVtRenderEngine->SetTerminalOwner(this);
+            _pVtRenderEngine->SetResizeQuirk(_resizeQuirk);
+            _passthroughMode = _passthroughModeArg;
         }
     }
     CATCH_RETURN();
@@ -228,6 +182,11 @@ VtIo::VtIo() :
 bool VtIo::IsUsingVt() const
 {
     return _initialized;
+}
+
+bool VtIo::PassthroughMode() const noexcept
+{
+    return _passthroughMode;
 }
 
 // Routine Description:
@@ -348,6 +307,25 @@ void VtIo::SetWindowVisibility(bool showOrHide) noexcept
     }
 
     LOG_IF_FAILED(_pVtRenderEngine->SetWindowVisibility(showOrHide));
+}
+
+void VtIo::ConcludePassthrough(const ConcludePassthroughParam& p) noexcept
+{
+    p.first->_pVtRenderEngine->EnableInvalidation(p.second->GetActiveBuffer().GetTextBuffer().GetCursor().GetPosition());
+}
+
+[[nodiscard]] VtIo::PassthroughModeCleanup VtIo::PrepareForPassthrough(SCREEN_INFORMATION& screenInfo) const
+{
+    auto& g = ServiceLocator::LocateGlobals();
+    g.pRender->TriggerFlush(false);
+    _pVtRenderEngine->DisableInvalidation();
+    return PassthroughModeCleanup{ ConcludePassthroughParam{ this, &screenInfo } };
+}
+
+void VtIo::Passthrough(const std::wstring_view& text) const
+{
+    THROW_IF_FAILED(_pVtRenderEngine->WriteTerminalW(text));
+    THROW_IF_FAILED(_pVtRenderEngine->Flush());
 }
 
 // Method Description:

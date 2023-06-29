@@ -49,6 +49,11 @@ using namespace Microsoft::Console::Render;
 [[nodiscard]] HRESULT VtEngine::Invalidate(const til::rect* const psrRegion) noexcept
 try
 {
+    if (!_invalidationEnabled)
+    {
+        return S_OK;
+    }
+
     _trace.TraceInvalidate(*psrRegion);
     _invalidMap.set(*psrRegion);
     return S_OK;
@@ -63,6 +68,11 @@ CATCH_RETURN();
 // - S_OK
 [[nodiscard]] HRESULT VtEngine::InvalidateCursor(const til::rect* const psrRegion) noexcept
 {
+    if (!_invalidationEnabled)
+    {
+        return S_OK;
+    }
+
     // If we just inherited the cursor, we're going to get an InvalidateCursor
     //      for both where the old cursor was, and where the new cursor is
     //      (the inherited location). (See Cursor.cpp:Cursor::SetPosition)
@@ -90,6 +100,11 @@ CATCH_RETURN();
 [[nodiscard]] HRESULT VtEngine::InvalidateAll() noexcept
 try
 {
+    if (!_invalidationEnabled)
+    {
+        return S_OK;
+    }
+
     _trace.TraceInvalidateAll(_lastViewport.ToOrigin().ToExclusive());
     _invalidMap.set_all();
     return S_OK;
@@ -106,6 +121,12 @@ CATCH_RETURN();
 // - S_OK
 [[nodiscard]] HRESULT VtEngine::InvalidateFlush(_In_ const bool circled, _Out_ bool* const pForcePaint) noexcept
 {
+    if (!_invalidationEnabled)
+    {
+        *pForcePaint = false;
+        return S_OK;
+    }
+
     // If we're in the middle of a resize request, don't try to immediately start a frame.
     if (_inResizeRequest)
     {

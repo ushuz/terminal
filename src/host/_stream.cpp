@@ -715,8 +715,7 @@ void AdjustCursorPosition(SCREEN_INFORMATION& screenInfo, _In_ til::point coordC
                                   const DWORD dwFlags,
                                   _Inout_opt_ til::CoordType* const psScrollY)
 {
-    if (!WI_IsFlagSet(screenInfo.OutputMode, ENABLE_VIRTUAL_TERMINAL_PROCESSING) ||
-        !WI_IsFlagSet(screenInfo.OutputMode, ENABLE_PROCESSED_OUTPUT))
+    if (WI_IsAnyFlagClear(screenInfo.OutputMode, ENABLE_VIRTUAL_TERMINAL_PROCESSING | ENABLE_PROCESSED_OUTPUT))
     {
         return WriteCharsLegacy(screenInfo,
                                 pwchBufferBackupLimit,
@@ -729,39 +728,40 @@ void AdjustCursorPosition(SCREEN_INFORMATION& screenInfo, _In_ til::point coordC
                                 psScrollY);
     }
 
-    auto Status = STATUS_SUCCESS;
-
-    const auto BufferSize = *pcb;
-    *pcb = 0;
-
+    try
     {
-        size_t TempNumSpaces = 0;
+        const auto BufferSize = *pcb;
+        auto& machine = screenInfo.GetStateMachine();
+        const auto vtio = ServiceLocator::LocateGlobals().getConsoleInformation().GetVtIo();
+        const auto passthrough = vtio && vtio->PassthroughMode();
 
+        *pcb = 0;
+        if (pcSpaces)
         {
-            if (SUCCEEDED_NTSTATUS(Status))
-            {
-                FAIL_FAST_IF(!(WI_IsFlagSet(screenInfo.OutputMode, ENABLE_PROCESSED_OUTPUT)));
-                FAIL_FAST_IF(!(WI_IsFlagSet(screenInfo.OutputMode, ENABLE_VIRTUAL_TERMINAL_PROCESSING)));
-
-                // defined down in the WriteBuffer default case hiding on the other end of the state machine. See outputStream.cpp
-                // This is the only mode used by DoWriteConsole.
-                FAIL_FAST_IF(!(WI_IsFlagSet(dwFlags, WC_LIMIT_BACKSPACE)));
-
-                auto& machine = screenInfo.GetStateMachine();
-                const auto cch = BufferSize / sizeof(WCHAR);
-
-                machine.ProcessString({ pwchRealUnicode, cch });
-                *pcb += BufferSize;
-            }
+            *pcSpaces = 0;
         }
 
-        if (nullptr != pcSpaces)
+        Microsoft::Console::VirtualTerminal::VtIo::PassthroughModeCleanup passthroughModeCleanup;
+        if (passthrough)
         {
-            *pcSpaces = TempNumSpaces;
+            passthroughModeCleanup = vtio->PrepareForPassthrough(screenInfo);
         }
+
+        const std::wstring_view text{ pwchRealUnicode, BufferSize / sizeof(wchar_t) };
+        machine.ProcessString(text);
+
+        if (passthrough)
+        {
+            // TODO: This entire function should be moved all the way up to WriteConsoleAImpl
+            // so that we don't perform a redundant UTF-8 -> UTF-16 -> UTF-8 conversion.
+            // The same optimization would have to be done for the WriteData class.
+            vtio->Passthrough(text);
+        }
+
+        *pcb += BufferSize;
+        return STATUS_SUCCESS;
     }
-
-    return Status;
+    NT_CATCH_RETURN();
 }
 
 // Routine Description:

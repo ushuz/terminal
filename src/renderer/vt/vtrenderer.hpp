@@ -74,16 +74,18 @@ namespace Microsoft::Console::Render
         [[nodiscard]] HRESULT IsGlyphWideByFont(std::wstring_view glyph, _Out_ bool* pResult) noexcept override;
 
         // VtEngine
+        void DisableInvalidation() noexcept;
+        void EnableInvalidation(til::point cursorPos) noexcept;
         [[nodiscard]] HRESULT SuppressResizeRepaint() noexcept;
         [[nodiscard]] HRESULT RequestCursor() noexcept;
         [[nodiscard]] HRESULT InheritCursor(const til::point coordCursor) noexcept;
         [[nodiscard]] HRESULT WriteTerminalUtf8(const std::string_view str) noexcept;
         [[nodiscard]] virtual HRESULT WriteTerminalW(const std::wstring_view str) noexcept = 0;
+        [[nodiscard]] HRESULT Flush() noexcept;
         void SetTerminalOwner(Microsoft::Console::VirtualTerminal::VtIo* const terminalOwner);
         void BeginResizeRequest();
         void EndResizeRequest();
         void SetResizeQuirk(const bool resizeQuirk);
-        void SetPassthroughMode(const bool passthrough) noexcept;
         void SetLookingForDSRCallback(std::function<void(bool)> pfnLooking) noexcept;
         void SetTerminalCursorTextPosition(const til::point coordCursor) noexcept;
         [[nodiscard]] virtual HRESULT ManuallyClearScrollback() noexcept;
@@ -136,7 +138,7 @@ namespace Microsoft::Console::Render
         std::optional<til::CoordType> _wrappedRow{ std::nullopt };
 
         bool _delayedEolWrap{ false };
-
+        bool _invalidationEnabled{ true };
         bool _resizeQuirk{ false };
         bool _passthrough{ false };
         bool _noFlushOnEnd{ false };
@@ -144,7 +146,6 @@ namespace Microsoft::Console::Render
 
         [[nodiscard]] HRESULT _WriteFill(const size_t n, const char c) noexcept;
         [[nodiscard]] HRESULT _Write(std::string_view const str) noexcept;
-        [[nodiscard]] HRESULT _Flush() noexcept;
 
         template<typename S, typename... Args>
         [[nodiscard]] HRESULT _WriteFormatted(S&& format, Args&&... args)

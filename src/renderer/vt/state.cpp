@@ -136,7 +136,7 @@ CATCH_RETURN();
     CATCH_RETURN();
 }
 
-[[nodiscard]] HRESULT VtEngine::_Flush() noexcept
+[[nodiscard]] HRESULT VtEngine::Flush() noexcept
 {
     if (_hFile)
     {
@@ -425,7 +425,7 @@ void VtEngine::SetTerminalOwner(Microsoft::Console::VirtualTerminal::VtIo* const
 HRESULT VtEngine::RequestCursor() noexcept
 {
     RETURN_IF_FAILED(_RequestCursor());
-    RETURN_IF_FAILED(_Flush());
+    RETURN_IF_FAILED(Flush());
     return S_OK;
 }
 
@@ -490,19 +490,6 @@ void VtEngine::SetResizeQuirk(const bool resizeQuirk)
     _resizeQuirk = resizeQuirk;
 }
 
-// Method Description:
-// - Configure the renderer to understand that we're operating in limited-draw
-//   passthrough mode. We do not need to handle full responsibility for replicating
-//   buffer state to the attached terminal.
-// Arguments:
-// - passthrough - True to turn on passthrough mode. False otherwise.
-// Return Value:
-// - true iff we were started with an output mode for passthrough. false otherwise.
-void VtEngine::SetPassthroughMode(const bool passthrough) noexcept
-{
-    _passthrough = passthrough;
-}
-
 void VtEngine::SetLookingForDSRCallback(std::function<void(bool)> pfnLooking) noexcept
 {
     _pfnSetLookingForDSR = pfnLooking;
@@ -546,13 +533,13 @@ HRESULT VtEngine::RequestWin32Input() noexcept
     // in the connected terminal after passing through an RIS sequence.
     RETURN_IF_FAILED(_RequestWin32Input());
     RETURN_IF_FAILED(_RequestFocusEventMode());
-    RETURN_IF_FAILED(_Flush());
+    RETURN_IF_FAILED(Flush());
     return S_OK;
 }
 
 HRESULT VtEngine::SwitchScreenBuffer(const bool useAltBuffer) noexcept
 {
     RETURN_IF_FAILED(_SwitchScreenBuffer(useAltBuffer));
-    RETURN_IF_FAILED(_Flush());
+    RETURN_IF_FAILED(Flush());
     return S_OK;
 }
