@@ -53,6 +53,7 @@ namespace Microsoft::Console::VirtualTerminal
 
         virtual void WarningBell() = 0;
         virtual bool GetLineFeedMode() const = 0;
+        virtual void LineFeed(const bool withReturn, const bool wrapForced) = 0;
         virtual void SetWindowTitle(const std::wstring_view title) = 0;
         virtual void UseAlternateScreenBuffer() = 0;
         virtual void UseMainScreenBuffer() = 0;

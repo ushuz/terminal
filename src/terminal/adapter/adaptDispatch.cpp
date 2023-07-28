@@ -2175,7 +2175,8 @@ bool AdaptDispatch::LineFeed(const DispatchTypes::LineFeedType lineFeedType)
     switch (lineFeedType)
     {
     case DispatchTypes::LineFeedType::DependsOnMode:
-        _DoLineFeed(textBuffer, _api.GetLineFeedMode(), false);
+        //_DoLineFeed(textBuffer, _api.GetLineFeedMode(), false);
+        _api.LineFeed(_api.GetLineFeedMode(), false);
         return true;
     case DispatchTypes::LineFeedType::WithoutReturn:
         _DoLineFeed(textBuffer, false, false);

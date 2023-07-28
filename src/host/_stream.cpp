@@ -42,8 +42,9 @@ using Microsoft::Console::VirtualTerminal::StateMachine;
 [[nodiscard]] NTSTATUS AdjustCursorPosition(SCREEN_INFORMATION& screenInfo,
                                             _In_ til::point coordCursor,
                                             const BOOL fKeepCursorVisible,
-                                            _Inout_opt_ til::CoordType* psScrollY)
+                                            _Inout_opt_ til::CoordType*)
 {
+    const auto inVtMode = WI_IsFlagSet(screenInfo.OutputMode, ENABLE_VIRTUAL_TERMINAL_PROCESSING);
     const auto bufferSize = screenInfo.GetBufferSize().Dimensions();
     if (coordCursor.x < 0)
     {
@@ -67,51 +68,37 @@ using Microsoft::Console::VirtualTerminal::StateMachine;
         }
         else
         {
-            coordCursor.x = screenInfo.GetTextBuffer().GetCursor().GetPosition().x;
+            if (inVtMode)
+            {
+                // In VT mode, the cursor must be left in the last column.
+                coordCursor.x = bufferSize.width - 1;
+            }
+            else
+            {
+                // For legacy apps, it is left where it was at the start of the write.
+                coordCursor.x = screenInfo.GetTextBuffer().GetCursor().GetPosition().x;
+            }
         }
-    }
-
-    auto Status = STATUS_SUCCESS;
-
-    if (coordCursor.y >= bufferSize.height)
-    {
-        // At the end of the buffer. Scroll contents of screen buffer so new position is visible.
-        FAIL_FAST_IF(!(coordCursor.y == bufferSize.height));
-        if (!StreamScrollRegion(screenInfo))
-        {
-            Status = STATUS_NO_MEMORY;
-        }
-
-        if (nullptr != psScrollY)
-        {
-            *psScrollY += bufferSize.height - coordCursor.y - 1;
-        }
-        coordCursor.y += bufferSize.height - coordCursor.y - 1;
     }
 
     const auto cursorMovedPastViewport = coordCursor.y > screenInfo.GetViewport().BottomInclusive();
-    if (SUCCEEDED_NTSTATUS(Status))
+
+    // if at right or bottom edge of window, scroll right or down one char.
+    if (cursorMovedPastViewport)
     {
-        // if at right or bottom edge of window, scroll right or down one char.
-        if (cursorMovedPastViewport)
-        {
-            til::point WindowOrigin;
-            WindowOrigin.x = 0;
-            WindowOrigin.y = coordCursor.y - screenInfo.GetViewport().BottomInclusive();
-            Status = screenInfo.SetViewportOrigin(false, WindowOrigin, true);
-        }
+        til::point WindowOrigin;
+        WindowOrigin.x = 0;
+        WindowOrigin.y = coordCursor.y - screenInfo.GetViewport().BottomInclusive();
+        LOG_IF_FAILED(screenInfo.SetViewportOrigin(false, WindowOrigin, true));
     }
 
-    if (SUCCEEDED_NTSTATUS(Status))
+    if (fKeepCursorVisible)
     {
-        if (fKeepCursorVisible)
-        {
-            screenInfo.MakeCursorVisible(coordCursor);
-        }
-        Status = screenInfo.SetCursorPosition(coordCursor, !!fKeepCursorVisible);
+        screenInfo.MakeCursorVisible(coordCursor);
     }
+    LOG_IF_FAILED(screenInfo.SetCursorPosition(coordCursor, !!fKeepCursorVisible));
 
-    return Status;
+    return STATUS_SUCCESS;
 }
 
 // Routine Description:
