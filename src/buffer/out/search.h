@@ -19,6 +19,7 @@ Revision History:
 
 #include "TextAttribute.hpp"
 #include "textBuffer.hpp"
+#include "UTextAdapter.h"
 #include "../renderer/inc/IRenderData.hpp"
 
 // This used to be in find.h.
@@ -68,6 +69,8 @@ private:
     static til::point s_GetInitialAnchor(const Microsoft::Console::Render::IRenderData& renderData, const Direction dir);
 
     static std::vector<std::wstring> s_CreateNeedleFromString(const std::wstring_view wstr);
+
+    UText _utext = UTEXT_INITIALIZER;
 
     bool _reachedEnd = false;
     til::point _coordNext;

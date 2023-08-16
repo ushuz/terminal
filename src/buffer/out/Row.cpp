@@ -118,10 +118,16 @@ LineRendition ROW::GetLineRendition() const noexcept
     return _lineRendition;
 }
 
-uint16_t ROW::GetLineWidth() const noexcept
+// Returns the index 1 past the last (technically) valid column in the row.
+// The interplay between the old console and newer VT APIs which support line renditions is
+// still unclear so it might be necessary to add two kinds of this function in the future.
+// Console APIs treat the buffer as a large NxM matrix after all.
+til::CoordType ROW::GetReadableColumnCount() const noexcept
 {
-    const auto scale = _lineRendition != LineRendition::SingleWidth ? 1 : 0;
-    return _columnCount >> scale;
+    const til::CoordType columnCount = _columnCount;
+    const til::CoordType scale = _lineRendition != LineRendition::SingleWidth;
+    const til::CoordType padding = _doubleBytePadded;
+    return (columnCount - padding) >> scale;
 }
 
 // Routine Description:
@@ -285,26 +291,6 @@ til::CoordType ROW::NavigateToPrevious(til::CoordType column) const noexcept
 til::CoordType ROW::NavigateToNext(til::CoordType column) const noexcept
 {
     return _adjustForward(_clampedColumn(column + 1));
-}
-
-uint16_t ROW::_adjustBackward(uint16_t column) const noexcept
-{
-    // Safety: This is a little bit more dangerous. The first column is supposed
-    // to never be a trailer and so this loop should exit if column == 0.
-    for (; _uncheckedIsTrailer(column); --column)
-    {
-    }
-    return column;
-}
-
-uint16_t ROW::_adjustForward(uint16_t column) const noexcept
-{
-    // Safety: This is a little bit more dangerous. The last column is supposed
-    // to never be a trailer and so this loop should exit if column == _columnCount.
-    for (; _uncheckedIsTrailer(column); ++column)
-    {
-    }
-    return column;
 }
 
 // Routine Description:
@@ -841,12 +827,6 @@ uint16_t ROW::size() const noexcept
     return _columnCount;
 }
 
-til::CoordType ROW::LineRenditionColumns() const noexcept
-{
-    const auto scale = _lineRendition != LineRendition::SingleWidth ? 1 : 0;
-    return _columnCount >> scale;
-}
-
 til::CoordType ROW::MeasureLeft() const noexcept
 {
     const auto text = GetText();
@@ -945,7 +925,8 @@ DbcsAttribute ROW::DbcsAttrAt(til::CoordType column) const noexcept
 
 std::wstring_view ROW::GetText() const noexcept
 {
-    return { _chars.data(), _charSize() };
+    const auto width = size_t{ til::at(_charOffsets, GetReadableColumnCount()) } & CharOffsetsMask;
+    return { _chars.data(), width };
 }
 
 std::wstring_view ROW::GetText(til::CoordType columnBegin, til::CoordType columnEnd) const noexcept
@@ -957,6 +938,19 @@ std::wstring_view ROW::GetText(til::CoordType columnBegin, til::CoordType column
     const size_t chEnd = _uncheckedCharOffset(gsl::narrow_cast<size_t>(colEnd));
 #pragma warning(suppress : 26481) // Don't use pointer arithmetic. Use span instead (bounds.1).
     return { _chars.data() + chBeg, chEnd - chBeg };
+}
+
+til::CoordType ROW::GetLeftAlignedColumnAtChar(const ptrdiff_t offset) const noexcept
+{
+    return _adjustBackward(GetRightAlignedColumnAtChar(offset));
+}
+
+til::CoordType ROW::GetRightAlignedColumnAtChar(const ptrdiff_t offset) const noexcept
+{
+    const auto beg = _charOffsets.begin() + 1;
+    const auto end = _charOffsets.end() - 1;
+    const auto idx = std::upper_bound(beg, end, offset, [](ptrdiff_t a, uint16_t b) { return a < (b & CharOffsetsMask); });
+    return gsl::narrow_cast<til::CoordType>(idx - beg);
 }
 
 DelimiterClass ROW::DelimiterClassAt(til::CoordType column, const std::wstring_view& wordDelimiters) const noexcept
@@ -997,28 +991,53 @@ constexpr uint16_t ROW::_clampedColumnInclusive(T v) const noexcept
     return static_cast<uint16_t>(std::max(T{ 0 }, std::min<T>(_columnCount, v)));
 }
 
-// Safety: off must be [0, _charSize()].
-wchar_t ROW::_uncheckedChar(size_t off) const noexcept
-{
-    return til::at(_chars, off);
-}
-
 uint16_t ROW::_charSize() const noexcept
 {
     // Safety: _charOffsets is an array of `_columnCount + 1` entries.
     return til::at(_charOffsets, _columnCount);
 }
 
+// Safety: off must be [0, _charSize()].
+template<typename T>
+wchar_t ROW::_uncheckedChar(T off) const noexcept
+{
+    return til::at(_chars, off);
+}
+
 // Safety: col must be [0, _columnCount].
-uint16_t ROW::_uncheckedCharOffset(size_t col) const noexcept
+template<typename T>
+uint16_t ROW::_uncheckedCharOffset(T col) const noexcept
 {
     assert(col < _charOffsets.size());
     return til::at(_charOffsets, col) & CharOffsetsMask;
 }
 
 // Safety: col must be [0, _columnCount].
-bool ROW::_uncheckedIsTrailer(size_t col) const noexcept
+template<typename T>
+bool ROW::_uncheckedIsTrailer(T col) const noexcept
 {
     assert(col < _charOffsets.size());
     return WI_IsFlagSet(til::at(_charOffsets, col), CharOffsetsTrailer);
+}
+
+template<typename T>
+T ROW::_adjustBackward(T column) const noexcept
+{
+    // Safety: This is a little bit more dangerous. The first column is supposed
+    // to never be a trailer and so this loop should exit if column == 0.
+    for (; _uncheckedIsTrailer(column); --column)
+    {
+    }
+    return column;
+}
+
+template<typename T>
+T ROW::_adjustForward(T column) const noexcept
+{
+    // Safety: This is a little bit more dangerous. The last column is supposed
+    // to never be a trailer and so this loop should exit if column == _columnCount.
+    for (; _uncheckedIsTrailer(column); ++column)
+    {
+    }
+    return column;
 }

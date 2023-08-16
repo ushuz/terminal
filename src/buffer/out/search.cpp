@@ -26,13 +26,34 @@ Search::Search(Microsoft::Console::Render::IRenderData& renderData,
                const std::wstring_view str,
                const Direction direction,
                const Sensitivity sensitivity) :
+    _coordAnchor(s_GetInitialAnchor(renderData, direction)),
+    _needle(s_CreateNeedleFromString(str)),
     _direction(direction),
     _sensitivity(sensitivity),
-    _needle(s_CreateNeedleFromString(str)),
-    _renderData(renderData),
-    _coordAnchor(s_GetInitialAnchor(renderData, direction))
+    _renderData(renderData)
 {
     _coordNext = _coordAnchor;
+
+    UErrorCode error = U_ZERO_ERROR;
+    const auto re = Microsoft::Buffer::ICU::URegularExpressionCreate(str, &error);
+    Microsoft::Buffer::ICU::UTextFromTextBuffer(&_utext, renderData.GetTextBuffer(), &error);
+    uregex_setUText(re.get(), &_utext, &error);
+
+    const auto beg = std::chrono::high_resolution_clock::now();
+
+    size_t count = 0;
+    if (uregex_find(re.get(), -1, &error))
+    {
+        do
+        {
+            const auto s = Microsoft::Buffer::ICU::BufferRangeFromUText(&_utext, uregex_start64(re.get(), 0, &error), uregex_end64(re.get(), 0, &error));
+            OutputDebugStringW(fmt::format(L"{},{} {},{}\n", s.start.x, s.start.y, s.end.x, s.end.y).c_str());
+        } while (uregex_findNext(re.get(), &error));
+    }
+
+    const auto end = std::chrono::high_resolution_clock::now();
+    const auto dur = std::chrono::duration<double>(end - beg).count();
+    OutputDebugStringW(fmt::format(L"{} {}\n", count, dur).c_str());
 }
 
 // Routine Description:

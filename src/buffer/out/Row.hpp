@@ -106,7 +106,7 @@ public:
     bool WasDoubleBytePadded() const noexcept;
     void SetLineRendition(const LineRendition lineRendition) noexcept;
     LineRendition GetLineRendition() const noexcept;
-    uint16_t GetLineWidth() const noexcept;
+    til::CoordType GetReadableColumnCount() const noexcept;
 
     void Reset(const TextAttribute& attr) noexcept;
     void TransferAttributes(const til::small_rle<TextAttribute, uint16_t, 1>& attr, til::CoordType newWidth);
@@ -128,7 +128,6 @@ public:
     TextAttribute GetAttrByColumn(til::CoordType column) const;
     std::vector<uint16_t> GetHyperlinks() const;
     uint16_t size() const noexcept;
-    til::CoordType LineRenditionColumns() const noexcept;
     til::CoordType MeasureLeft() const noexcept;
     til::CoordType MeasureRight() const noexcept;
     bool ContainsText() const noexcept;
@@ -136,6 +135,8 @@ public:
     DbcsAttribute DbcsAttrAt(til::CoordType column) const noexcept;
     std::wstring_view GetText() const noexcept;
     std::wstring_view GetText(til::CoordType columnBegin, til::CoordType columnEnd) const noexcept;
+    til::CoordType GetLeftAlignedColumnAtChar(ptrdiff_t offset) const noexcept;
+    til::CoordType GetRightAlignedColumnAtChar(ptrdiff_t offset) const noexcept;
     DelimiterClass DelimiterClassAt(til::CoordType column, const std::wstring_view& wordDelimiters) const noexcept;
 
     auto AttrBegin() const noexcept { return _attr.begin(); }
@@ -206,16 +207,21 @@ private:
     template<typename T>
     constexpr uint16_t _clampedColumnInclusive(T v) const noexcept;
 
-    uint16_t _adjustBackward(uint16_t column) const noexcept;
-    uint16_t _adjustForward(uint16_t column) const noexcept;
-
-    wchar_t _uncheckedChar(size_t off) const noexcept;
     uint16_t _charSize() const noexcept;
-    uint16_t _uncheckedCharOffset(size_t col) const noexcept;
-    bool _uncheckedIsTrailer(size_t col) const noexcept;
+    template<typename T>
+    wchar_t _uncheckedChar(T off) const noexcept;
+    template<typename T>
+    uint16_t _uncheckedCharOffset(T col) const noexcept;
+    template<typename T>
+    bool _uncheckedIsTrailer(T col) const noexcept;
+    template<typename T>
+    T _adjustBackward(T column) const noexcept;
+    template<typename T>
+    T _adjustForward(T column) const noexcept;
 
     void _init() noexcept;
     void _resizeChars(uint16_t colEndDirty, uint16_t chBegDirty, size_t chEndDirty, uint16_t chEndDirtyOld);
+    til::CoordType _getColumnPastChar(ptrdiff_t offset) const noexcept;
 
     // These fields are a bit "wasteful", but it makes all this a bit more robust against
     // programming errors during initial development (which is when this comment was written).
